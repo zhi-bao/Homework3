@@ -74,13 +74,44 @@ class MyPortfolio:
         """
         TODO: Complete Task 4 Below
         """
-
+        # Equal weight
+        self.portfolio_weights[assets] = 1/len(assets)
+        date_index = self.portfolio_weights.index
+        total_len = len(self.portfolio_weights)
+        start_day = self.lookback//5
+        # Use my strategy 
+        for i in range(start_day, total_len):
+            # Get prices
+            lookback = min(self.lookback, i)
+            prices = self.returns.copy()[assets].iloc[i - lookback : i]
+            # Hold 10 day
+            if i%10 == 0 or i == start_day:
+                sol = self.get_solution(prices, no_short=False)
+                # Normalize
+                sol = sol/sol.sum()
+            # Update the answer
+            self.portfolio_weights.loc[date_index[i], assets] = sol
         """
         TODO: Complete Task 4 Above
         """
 
         self.portfolio_weights.ffill(inplace=True)
         self.portfolio_weights.fillna(0, inplace=True)
+
+    def get_solution(self, prices, no_short=True):
+        # ref: https://medium.com/@carlolepelaars/towards-a-more-profitable-s-p500-with-portfolio-optimization-c43a37d9078f
+        mu = prices.mean()
+        sigma = prices.cov()
+        
+        inv_sigma = np.linalg.pinv(sigma)
+        ones = np.ones(len(mu))
+        inv_dot_ones = np.dot(inv_sigma, ones)
+        weights = inv_dot_ones / np.dot(inv_dot_ones, ones)
+        if no_short:
+            weights[weights <= 0 ] = 0 
+        weights = weights / weights.sum()
+
+        return weights
 
     def calculate_portfolio_returns(self):
         # Ensure weights are calculated
